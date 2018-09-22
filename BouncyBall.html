@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Bouncy Ball</title>
+    <style>
+    	* { padding: 0; margin: 0; text-align:center; background-color:powderblue;}
+    	canvas { background: #eee; display: block; margin: 0 auto; float:left; }
+    </style>
+</head>
+<body>
+<div id = "welcome"></div>
+<div id="y">Bouncy Ball :)</div>
+<div id="t">Click to make a lil bouncy ball</div>
+
+<canvas id="myCanvas" width="1920" height="800"></canvas>
+
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+
+<script>
+//Server and Config
+var debugCount = 0;
+
+var socket = io();
+var users = [];
+var balls = [];
+var userIndex = 0;
+
+function user(username,mouseX,mouseY, color){
+	this.username = username;
+	this.mouseX = mouseX;
+	this.mouseY = mouseY;
+	this.color = color;
+}
+
+user.prototype.mouseUpdate = function(clientX,clientY){
+	this.mouseX = clientX;
+	this.mouseY = clientY;
+}
+
+user.prototype.drawMouse = function(){
+	c.beginPath();
+	c.fillStyle = this.color;
+	c.arc(this.mouseX,this.mouseY,4,0,Math.PI*2);
+	c.fillText(this.username,this.mouseX,this.mouseY-10);
+	c.fill();
+	c.closePath();
+}
+
+function checkUsers(){
+	var check = true;
+
+	for (i=users.length-1;i >=0;i--){
+		if(!(users == user)){
+			check = false;
+		}
+		}
+		
+		if(check){
+			init = true;
+		}
+	
+
+}
+
+var canvas = document.getElementById("myCanvas")
+var c = canvas.getContext("2d");
+c.fillStyle = "#0095DD";
+
+var divX = document.getElementById("y");
+var divY = document.getElementById("t");
+var welcome = document.getElementById("welcome");
+
+var mouseX = 0;
+var mouseY = 0;
+
+var init = false;
+var username = prompt("What is your username?");
+welcome.innerHTML = "Welcome, " + username + "!";
+socket.emit('username', username);
+
+socket.on('index', function(index){
+	userIndex = index;
+	for(var i = 0; i<userIndex; i++){
+		console.log(i);
+		socket.emit('request user', i);
+	}
+});
+
+socket.on('username', function(index, username, color){
+	console.log(color);
+	users[index] = new user(username,0,0,color);
+});
+
+socket.on('request user', function(index, username, mouseX, mouseY, color){
+console.log(mouseX + " " + mouseY);
+	users[index] = new user(username,mouseX,mouseY,color);
+});
+
+
+socket.on('user disconnect', function(index){
+	users.splice(index,1);
+	if(userIndex > index){
+		userIndex--;
+	}
+	socket.emit('user disconnect', index);
+});
+
+</script>
+
+<script>
+//Bouncy Ball Class
+function ball(x,y,vy,vx,ax,ay,color){
+	this.x = x;
+	this.y = y;
+	this.vy = vy;
+	this.vx = vx;
+	this.ax = ax;
+	this.ay = ay;
+	this.color = color;
+}
+	
+ball.prototype.draw = function(){
+	c.beginPath();
+	c.fillStyle = this.color;
+	c.arc(this.x,this.y,10,0,Math.PI*2);
+	c.fill();
+	c.closePath();
+}
+
+ball.prototype.move = function(){
+	
+	if((this.y > (canvas.height-10)) || (this.y < 10)){
+		this.vy = -this.vy;
+	}else {
+		this.vy +=this.ay;
+	}
+	
+	if((this.x > (canvas.width-10)) || (this.x < 10)){
+		this.vx = -this.vx;
+	}else {
+		this.vx +=this.ax;
+	}
+	
+	this.y+=this.vy;
+	this.x+=this.vx;
+}
+
+</script>
+
+<script>
+//Event Listeners (Mouse functions)
+const MOUSE_FIX = 54;
+	canvas.addEventListener("mousemove", function(e){
+		if(init){
+			mouseX = e.pageX;
+			mouseY = e.pageY-MOUSE_FIX;
+			socket.emit('mousepos', userIndex, mouseX,mouseY);
+			console.log(balls);
+			
+		}
+	});
+	
+	socket.on('mousepos', function(index, mouseX, mouseY){
+		users[index].mouseUpdate(mouseX, mouseY);
+	});
+	
+	canvas.addEventListener("mousedown", function(e){	
+		if(e.button == 0){
+			socket.emit('createball', mouseX, mouseY);
+		}
+	
+	});
+	
+</script>
+
+<script>
+//ball update
+socket.on('ballupdate', function(ballUpdate){
+
+	for (var k = ballUpdate.length-1;k>=0; k--){
+		if(balls[k] == ball){
+			balls[k].x = ballUpdate[k].x;
+			balls[k].y = ballUpdate[k].y;
+			balls[k].vx = ballUpdate[k].vx;
+			balls[k].vy = ballUpdate[k].vy;
+			balls[k].ax = ballUpdate[k].ax;
+			balls[k].ay = ballUpdate[k].ay;
+		}else{
+			balls[k] = new ball(ballUpdate[k].x,ballUpdate[k].y, ballUpdate[k].vy, ballUpdate[k].vx, ballUpdate[k].ax, ballUpdate[k].ay, ballUpdate[k].color);
+		}
+	
+	}
+
+});
+</script>
+
+<script>
+//Draw function
+var r,g,b;
+
+function draw(){
+
+	if(!init)
+		checkUsers();
+	
+	if(init){
+
+		c.beginPath();
+		c.fillStyle = "#eee";
+		c.fillRect(0,0,canvas.width,canvas.height);
+		c.closePath();
+		
+		for (var j = balls.length-1; j>=0; j--){
+			balls[j].draw();
+		}
+		
+		for(i = users.length-1; i >=0; i--){
+			users[i].drawMouse();
+		}
+	
+	}
+}
+setInterval(draw,3);
+
+</script>
+
+</body>
+</html>

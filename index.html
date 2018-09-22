@@ -24,10 +24,11 @@
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
       $(function () {
+        var socket = io(); 
 		var welcome = document.getElementById("welcome");
 		var username = prompt("What is your username?");
-		welcome.innerHTML = "Welcome, " + username;
-        var socket = io(); 
+		welcome.innerHTML = "Welcome, " + username + "!";
+		socket.emit('username', username);
         $('form').submit(function(){
           socket.emit('chat message', $('#m').val(),username);
           $('#m').val('');
