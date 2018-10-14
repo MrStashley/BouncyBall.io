@@ -4,29 +4,72 @@
     <meta charset="utf-8" />
     <title>Bouncy Ball</title>
     <style>
-    	* { padding: 0; margin: 0; text-align:center; background-color:powderblue;}
-    	canvas { background: #eee; display: block; margin: 0 auto; float:left; }
+    	* { padding: 0; margin: 0; text-align:center; background:powderblue}
+    	canvas { background: #eee; display: block; margin: auto; padding: 0;}
+		form input { padding: 8px; width: 100%; background-color: white; border-color: black; border-width: 1px; background: white; }
+
+		ul, li{
+			list-style-type:none;
+		}li{border: 1px solid; border-bottom-width: .5px;}
+		
+		
+		
     </style>
 </head>
 <body>
 <div id = "welcome"></div>
 <div id="y">Bouncy Ball :)</div>
 <div id="t">Click to make a lil bouncy ball</div>
+<form action="" style="position: absolute; left: 1690px; top: 225px; width:210px; height:10px;display:none;">
+		<input id = "chatBar" autocomplete="off" style = "z-index: 1; text-align: left; display: none;" />
+</form>
 
-<canvas id="myCanvas" width="1920" height="800"></canvas>
+<ul id = "usersMenu" style = "position: absolute; left: 860px; top: 250px; width: 200px;height: 20px; display:none;">
+	<li>Connected Users:</li>
+</ul>		
 
-<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<canvas id="myCanvas" width="1280" height="800"></canvas>
+
+<script src="/socket.io/socket.io.js"></script>
 <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
 
 <script>
 //Server and Config
+//https://cdn.socket.io/socket.io-1.2.0.js
 var debugCount = 0;
 
 var socket = io();
 var users = [];
 var balls = [];
+var chats = [];
 var userIndex = 0;
+var toggleText = false;
+var toggleTab = false;
 
+//chat object
+function chat(username = "null", msg = "", color = "Black",x,y){
+	this.username = username;
+	this.msg = msg;
+	this.color = color;
+	this.x = x;
+	this.y = y;
+	this.filled = false;
+	this.count = 0;
+}
+
+chat.prototype.draw = function(){
+	c.fillStyle = this.color;
+	if(this.filled){
+		c.fillText(this.username + ": " + this.msg, this.x, this.y);
+		this.count++;
+	}
+	if(this.count == 4000){
+		this.filled = false;
+		this.count = 0;
+	}
+}
+
+//user object
 function user(username,mouseX,mouseY, color){
 	this.username = username;
 	this.mouseX = mouseX;
@@ -49,6 +92,7 @@ user.prototype.drawMouse = function(){
 }
 
 function checkUsers(){
+	//checks to make sure user data is up to date before doing other things
 	var check = true;
 
 	for (i=users.length-1;i >=0;i--){
@@ -66,15 +110,46 @@ function checkUsers(){
 
 var canvas = document.getElementById("myCanvas")
 var c = canvas.getContext("2d");
+var rect = canvas.getBoundingClientRect();
 c.fillStyle = "#0095DD";
 
 var divX = document.getElementById("y");
 var divY = document.getElementById("t");
 var welcome = document.getElementById("welcome");
 
+var usersMenu = document.getElementById("usersMenu");
+var chatBar = document.getElementById("chatBar");
+
 var mouseX = 0;
 var mouseY = 0;
 
+//user menu setup
+var userX = (860/1920)*canvas.width + rect.left;
+var userY = (250/800)*canvas.height - rect.top + 36;
+var userWidth = (210/1920)*canvas.width;
+var userHeight = (20/800)*canvas.height;
+usersMenu.style.left = userX+"px";
+usersMenu.style.top = userY+"px";
+usersMenu.style.width = userWidth+"px";
+usersMenu.style.height = userHeight+"px";
+
+//Chat setup
+var chatX = (1690/1920)*canvas.width;
+var chatY = (165/800)*canvas.height;
+var chatIncrement = 15;
+var chatBarX = chatX + rect.left;
+var chatBarY = (225/800)*canvas.height - rect.top + 36;
+var chatBarWidth = (200/1920)*canvas.width;
+var chatBarHeight = (10/800)*canvas.height;
+chatBar.form.style.left = chatBarX+"px"; 
+chatBar.form.style.top = chatBarY+"px";
+chatBar.form.style.width = chatBarWidth+"px";
+
+for(var i = 0; i <= (chatY/chatIncrement)-1; i++){
+	chats[i] = new chat("","","black",chatX, chatY - (i*chatIncrement));
+}
+
+//Server
 var init = false;
 var username = prompt("What is your username?");
 welcome.innerHTML = "Welcome, " + username + "!";
@@ -83,19 +158,19 @@ socket.emit('username', username);
 socket.on('index', function(index){
 	userIndex = index;
 	for(var i = 0; i<userIndex; i++){
-		console.log(i);
 		socket.emit('request user', i);
 	}
 });
 
 socket.on('username', function(index, username, color){
-	console.log(color);
 	users[index] = new user(username,0,0,color);
+	$('#usersMenu').append($('<li>').text(username));
 });
 
 socket.on('request user', function(index, username, mouseX, mouseY, color){
-console.log(mouseX + " " + mouseY);
 	users[index] = new user(username,mouseX,mouseY,color);
+	$('#usersMenu').append($('<li>').text(username));
+	
 });
 
 
@@ -104,7 +179,41 @@ socket.on('user disconnect', function(index){
 	if(userIndex > index){
 		userIndex--;
 	}
+	$('#usersMenu').empty();
+	$('#usersMenu').append($('<li>').text("Connected Users:"));
+	for(var i = 0; i < users.length; i++){
+		$('#usersMenu').append($('<li>').text(users[i].username));
+	}
+	
 	socket.emit('user disconnect', index);
+});
+
+$('form').submit(function(e){
+	e.preventDefault();
+    socket.emit('chat message', $('#chatBar').val(),users[userIndex].username, users[userIndex].color);
+    $('#chatBar').val('');
+    return false;
+});
+
+socket.on('chat message', function(msg, username, color){
+	for (i = chats.length-2;i >= 0; i--){
+		var message = chats[i].msg;
+		var user = chats[i].username;
+		var colour = chats[i].color;
+		if(chats[i].filled){
+			chats[i+1].msg = message;
+			chats[i+1].username = user;
+			chats[i+1].color = colour;
+			chats[i+1].filled = true;
+			chats[i+1].count = chats[i].count;
+		}
+	}
+	
+	chats[0].filled = true;
+	chats[0].msg = msg;
+	chats[0].color = color;
+	chats[0].username = username;
+	chats[0].count = 0;
 });
 
 </script>
@@ -129,33 +238,24 @@ ball.prototype.draw = function(){
 	c.closePath();
 }
 
-ball.prototype.move = function(){
-	
-	if((this.y > (canvas.height-10)) || (this.y < 10)){
-		this.vy = -this.vy;
-	}else {
-		this.vy +=this.ay;
-	}
-	
-	if((this.x > (canvas.width-10)) || (this.x < 10)){
-		this.vx = -this.vx;
-	}else {
-		this.vx +=this.ax;
-	}
-	
-	this.y+=this.vy;
-	this.x+=this.vx;
-}
-
 </script>
 
 <script>
 //Event Listeners (Mouse functions)
-const MOUSE_FIX = 54;
+
+function getMousePos(canvas, evt) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: evt.clientX - rect.left,
+      y: evt.clientY - rect.top
+    };
+}
+
 	canvas.addEventListener("mousemove", function(e){
 		if(init){
-			mouseX = e.pageX;
-			mouseY = e.pageY-MOUSE_FIX;
+			var pos = getMousePos(canvas, e);
+			mouseX = pos.x;
+			mouseY = pos.y;
 			socket.emit('mousepos', userIndex, mouseX,mouseY);
 			console.log(balls);
 			
@@ -173,6 +273,37 @@ const MOUSE_FIX = 54;
 	
 	});
 	
+	document.addEventListener("keydown", function(e){
+		e = e || window.event;
+		if(e.key == "`"){
+			if(toggleTab){
+				usersMenu.style.display = "initial";
+				toggleTab = false;
+			}else if(!toggleTab){
+				usersMenu.style.display = "none";
+				toggleTab = true;
+			}	
+		}
+		
+		if(e.key == "t"){
+			if(!toggleText){
+				chatBar.form.style.display = "initial";
+				chatBar.style.display = "initial";
+				chatBar.focus();
+				toggleText = true;
+			}
+		}
+		
+		if (e.key == "Escape"){
+			if(toggleText){
+				chatBar.form.style.display = "none";
+				chatBar.style.display = "none";
+				toggleText = false;
+			}
+			
+		}
+	
+	});
 </script>
 
 <script>
@@ -194,6 +325,10 @@ socket.on('ballupdate', function(ballUpdate){
 	}
 
 });
+
+socket.on('removeball', function(ballIndex){
+	balls.splice(ballIndex,1);
+});
 </script>
 
 <script>
@@ -212,13 +347,21 @@ function draw(){
 		c.fillRect(0,0,canvas.width,canvas.height);
 		c.closePath();
 		
-		for (var j = balls.length-1; j>=0; j--){
+		c.font = "12px Comic Sans MS";
+		for (var k = chats.length-1; k>=0; k--){
+			chats[k].draw();
+		}
+		
+		for (var j = 0; j<=balls.length-1; j++){
 			balls[j].draw();
 		}
 		
+		c.font = "9px Comic Sans MS";
 		for(i = users.length-1; i >=0; i--){
 			users[i].drawMouse();
 		}
+		
+		
 	
 	}
 }

@@ -5,9 +5,10 @@ var port = process.env.PORT || 3000;
 var users = [];
 var balls = [];
 var GRAVITY = .6;
+var friction = .99;
 var ballCap = 50;
 const CANVAS_HEIGHT = 800;
-const CANVAS_WIDTH = 1920;
+const CANVAS_WIDTH = 1280;
 
 //user class
 function user(ip,username,mouseX,mouseY,color){
@@ -32,24 +33,47 @@ function ball(x,y,vy,vx,ax,ay,color){
 	this.ax = ax;
 	this.ay = ay;
 	this.color = color;
+	this.count = 0;
 }
 
 ball.prototype.move = function(){
 	
-	if((this.y > (CANVAS_HEIGHT-10)) || (this.y < 10)){
-		this.vy = -this.vy;
-	}else {
-		this.vy +=this.ay;
+	this.vy += this.ay;
+	this.vx += this.ax;
+	
+	this.x += this.vx;
+	this.y += this.vy;
+	
+	if(this.y > CANVAS_HEIGHT-10)
+		this.y = CANVAS_HEIGHT-10;
+	else if (this.y < 10)
+		this.y = 10;
+	
+	if(this.x > CANVAS_WIDTH-10)
+		this.x = CANVAS_WIDTH-10;
+	else if(this.x < 10)
+		this.x = 10;
+	
+	if((this.y >= (CANVAS_HEIGHT-10)) || (this.y <= 10)){
+		this.vy = -this.vy * friction;
+	}
+	if((this.x >= (CANVAS_WIDTH-10)) || (this.x <= 10)){
+		this.vx = -this.vx * friction;
+	}
+}
+
+ball.prototype.isOutOfPlay = function(){
+	if((this.x >= (CANVAS_WIDTH-10)) || (this.x < 10)){
+		return true;
+	}
+	else if((this.y >= (CANVAS_HEIGHT-10)) || (this.y < 10)){
+		return true;
+	}
+	else{
+		return false;
 	}
 	
-	if((this.x > (CANVAS_WIDTH-10)) || (this.x < 10)){
-		this.vx = -this.vx;
-	}else {
-		this.vx +=this.ax;
-	}
 	
-	this.y+=this.vy;
-	this.x+=this.vx
 }
 
 
@@ -80,11 +104,11 @@ io.on('connection', function(socket){
   socket.on('mousepos', function(index, mouseX,mouseY){
 	  users[index].mouseUpdate(mouseX,mouseY);
 	  io.emit('mousepos', index, mouseX, mouseY);
-	  console.log(balls);
+	  console.log(users);
   });
   
-  socket.on('chat message', function(msg,username){
-    io.emit('chat message',msg,username);
+  socket.on('chat message', function(msg,username,color){
+    io.emit('chat message',msg,username,color);
   });
   
   socket.on('user disconnect', function(UIndex){
@@ -106,11 +130,21 @@ io.on('connection', function(socket){
   function updateBall(){  
 		for (var j = balls.length-1; j>=0; j--){
 			balls[j].move();
+			if(balls[j].isOutOfPlay()){
+				balls[j].count++;
+			}
+			else{
+				balls[j].count = 0;
+			}
+			if(balls[j].count >= 10){
+				balls.splice(j,1);
+				io.emit('removeball',j);
+			}
 		}
   
 	io.emit('ballupdate', balls);  
   }
-  setInterval(updateBall,30);
+  setInterval(updateBall,20);
   
   
 });
