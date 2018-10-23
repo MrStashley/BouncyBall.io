@@ -127,6 +127,10 @@ io.on('connection', function(socket){
 			balls[balls.length] = new ball(mouseX,mouseY,0,0,0,GRAVITY,"rgb("+Math.floor((Math.random() * 255) + 1)+","+Math.floor((Math.random() * 255) + 1)+","+Math.floor((Math.random() * 255) + 1)+")");
   });
   
+
+  
+});
+
   function updateBall(){  
 		for (var j = balls.length-1; j>=0; j--){
 			balls[j].move();
@@ -146,9 +150,6 @@ io.on('connection', function(socket){
   }
   setInterval(updateBall,20);
   
-  
-});
-
 
 http.listen(port, function(){
   console.log('listening on *:' + port);
