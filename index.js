@@ -95,6 +95,7 @@ io.on('connection', function(socket){
 		index = users.length-1;
 		socket.emit('index', index);
 		io.emit('username', index, users[index].username, users[index].color);
+		console.log(users);
   });
  
  socket.on('request user', function(index){
@@ -104,7 +105,6 @@ io.on('connection', function(socket){
   socket.on('mousepos', function(index, mouseX,mouseY){
 	  users[index].mouseUpdate(mouseX,mouseY);
 	  io.emit('mousepos', index, mouseX, mouseY);
-	  console.log(users);
   });
   
   socket.on('chat message', function(msg,username,color){
