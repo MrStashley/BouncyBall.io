@@ -276,12 +276,12 @@ function getMousePos(canvas, evt) {
 	document.addEventListener("keydown", function(e){
 		e = e || window.event;
 		if(e.key == "`"){
-			if(toggleTab){
+			if(!toggleTab){
 				usersMenu.style.display = "initial";
-				toggleTab = false;
-			}else if(!toggleTab){
-				usersMenu.style.display = "none";
 				toggleTab = true;
+			}else if(toggleTab){
+				usersMenu.style.display = "none";
+				toggleTab = false;
 			}	
 		}
 		
