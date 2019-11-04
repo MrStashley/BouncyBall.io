@@ -11,22 +11,23 @@
 		ul, li{
 			list-style-type:none;
 		}li{border: 1px solid; border-bottom-width: .5px;}
-		
-		
-		
+
+
+
     </style>
 </head>
 <body>
 <div id = "welcome"></div>
 <div id="y">Bouncy Ball :)</div>
 <div id="t">Click to make a lil bouncy ball</div>
+<div id="t">Press T to chat and press ~ to view players</div>
 <form action="" style="position: absolute; left: 1690px; top: 225px; width:210px; height:10px;display:none;">
 		<input id = "chatBar" autocomplete="off" style = "z-index: 1; text-align: left; display: none;" />
 </form>
 
 <ul id = "usersMenu" style = "position: absolute; left: 860px; top: 250px; width: 200px;height: 20px; display:none;">
 	<li>Connected Users:</li>
-</ul>		
+</ul>
 
 	<canvas id="myCanvas" width="1280" height="800"></canvas>
 
@@ -100,11 +101,11 @@ function checkUsers(){
 			check = false;
 		}
 		}
-		
+
 		if(check){
 			init = true;
 		}
-	
+
 
 }
 
@@ -141,7 +142,7 @@ var chatBarX = chatX + rect.left;
 var chatBarY = (225/800)*canvas.height - rect.top + 36;
 var chatBarWidth = (200/1920)*canvas.width;
 var chatBarHeight = (10/800)*canvas.height;
-chatBar.form.style.left = chatBarX+"px"; 
+chatBar.form.style.left = chatBarX+"px";
 chatBar.form.style.top = chatBarY+"px";
 chatBar.form.style.width = chatBarWidth+"px";
 
@@ -170,7 +171,7 @@ socket.on('username', function(index, username, color){
 socket.on('request user', function(index, username, mouseX, mouseY, color){
 	users[index] = new user(username,mouseX,mouseY,color);
 	$('#usersMenu').append($('<li>').text(username));
-	
+
 });
 
 
@@ -184,7 +185,7 @@ socket.on('user disconnect', function(index){
 	for(var i = 0; i < users.length; i++){
 		$('#usersMenu').append($('<li>').text(users[i].username));
 	}
-	
+
 	socket.emit('user disconnect', index);
 });
 
@@ -208,7 +209,7 @@ socket.on('chat message', function(msg, username, color){
 			chats[i+1].count = chats[i].count;
 		}
 	}
-	
+
 	chats[0].filled = true;
 	chats[0].msg = msg;
 	chats[0].color = color;
@@ -229,7 +230,7 @@ function ball(x,y,vy,vx,ax,ay,color){
 	this.ay = ay;
 	this.color = color;
 }
-	
+
 ball.prototype.draw = function(){
 	c.beginPath();
 	c.fillStyle = this.color;
@@ -258,21 +259,21 @@ function getMousePos(canvas, evt) {
 			mouseY = pos.y;
 			socket.emit('mousepos', userIndex, mouseX,mouseY);
 			console.log(balls);
-			
+
 		}
 	});
-	
+
 	socket.on('mousepos', function(index, mouseX, mouseY){
 		users[index].mouseUpdate(mouseX, mouseY);
 	});
-	
-	canvas.addEventListener("mousedown", function(e){	
+
+	canvas.addEventListener("mousedown", function(e){
 		if(e.button == 0){
 			socket.emit('createball', mouseX, mouseY);
 		}
-	
+
 	});
-	
+
 	document.addEventListener("keydown", function(e){
 		e = e || window.event;
 		if(e.key == "`"){
@@ -282,9 +283,9 @@ function getMousePos(canvas, evt) {
 			}else if(toggleTab){
 				usersMenu.style.display = "none";
 				toggleTab = false;
-			}	
+			}
 		}
-		
+
 		if(e.key == "t"){
 			if(!toggleText){
 				chatBar.form.style.display = "initial";
@@ -293,16 +294,16 @@ function getMousePos(canvas, evt) {
 				toggleText = true;
 			}
 		}
-		
+
 		if (e.key == "Escape"){
 			if(toggleText){
 				chatBar.form.style.display = "none";
 				chatBar.style.display = "none";
 				toggleText = false;
 			}
-			
+
 		}
-	
+
 	});
 </script>
 
@@ -321,7 +322,7 @@ socket.on('ballupdate', function(ballUpdate){
 		}else{
 			balls[k] = new ball(ballUpdate[k].x,ballUpdate[k].y, ballUpdate[k].vy, ballUpdate[k].vx, ballUpdate[k].ax, ballUpdate[k].ay, ballUpdate[k].color);
 		}
-	
+
 	}
 
 });
@@ -339,30 +340,30 @@ function draw(){
 
 	if(!init)
 		checkUsers();
-	
+
 	if(init){
 
 		c.beginPath();
 		c.fillStyle = "#eee";
 		c.fillRect(0,0,canvas.width,canvas.height);
 		c.closePath();
-		
+
 		c.font = "12px Comic Sans MS";
 		for (var k = chats.length-1; k>=0; k--){
 			chats[k].draw();
 		}
-		
+
 		for (var j = 0; j<=balls.length-1; j++){
 			balls[j].draw();
 		}
-		
+
 		c.font = "9px Comic Sans MS";
 		for(i = users.length-1; i >=0; i--){
 			users[i].drawMouse();
 		}
-		
-		
-	
+
+
+
 	}
 }
 setInterval(draw,3);
